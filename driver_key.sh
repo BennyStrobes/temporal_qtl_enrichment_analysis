@@ -13,6 +13,7 @@ parameter_string="te_log_linear_environmental_variable_time_steps_optimizer_LBFG
 #File containing list of variant gene pairs that are significant
 significant_variant_gene_pairs_file="/project2/gilad/bstrober/ipsc_differentiation/dynamic_qtl_pipelines/ipsc_data_te/qtl_results/te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.01_significant_egenes.txt"
 
+all_significant_variant_gene_pairs_file="/project2/gilad/bstrober/ipsc_differentiation/dynamic_qtl_pipelines/ipsc_data_te/qtl_results/te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.01_significant.txt"
 
 
 
@@ -34,6 +35,9 @@ time_step_independent_stem="/project2/gilad/bstrober/ipsc_differentiation/time_s
 # Each cell line has its own file with suffix $cell_line_identifier'_15_coreMarks_mnemonics.bed.gz'
 chrom_hmm_input_dir="/project2/gilad/bstrober/ipsc_differentiation/preprocess_input_data/chrom_hmm/"
 
+# File containing dosage based genotypes
+genotype_file="/project2/gilad/bstrober/ipsc_differentiation/preprocess/genotype/YRI_genotype.vcf"
+
 
 #####################################################################
 #OUTPUT DATA
@@ -51,6 +55,9 @@ chrom_hmm_enrichment_directory=$output_root"chrom_hmm_enrichment/"
 
 # Directory containing results for distance to tss analysis
 time_step_independent_comparison_directory=$output_root"time_step_independent_comparison/"
+
+# Directory containing results for cell line overlap analysis
+cell_line_overlap_directory=$output_root"cell_line_overlap/"
 
 
 # Directory containing visualizations from all analyses
@@ -93,4 +100,13 @@ sbatch chrom_hmm_enrichment_analysis.sh $parameter_string $num_permutations $chr
 fi
 
 
+
+#########################################################
+# PART 3: Cell Line overlap analysis
+# Compute how often a given pair of cell lines overlap in their genotype in hits compared to background
+#########################################################
+
+if false; then
+sh cell_line_overlap_analysis.sh $all_significant_variant_gene_pairs_file $real_dynamic_qtl_results_file $genotype_file $parameter_string $cell_line_overlap_directory $visualization_directory
+fi
 
