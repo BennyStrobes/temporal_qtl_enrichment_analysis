@@ -95,9 +95,8 @@ fi
 ### 'ipsc_cell_lines'
 #########################################################
 num_permutations="100"
-if false; then
-sbatch chrom_hmm_enrichment_analysis.sh $parameter_string $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory
-fi
+sh chrom_hmm_enrichment_analysis.sh $parameter_string $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory
+
 
 
 
@@ -108,5 +107,16 @@ fi
 
 if false; then
 sh cell_line_overlap_analysis.sh $all_significant_variant_gene_pairs_file $real_dynamic_qtl_results_file $genotype_file $parameter_string $cell_line_overlap_directory $visualization_directory
+fi
+
+
+
+
+#########################################################
+# PART 4: time step independent comparison
+# Compare dynamic qtl results with time step independent analysis
+#########################################################
+if false; then
+sh time_step_independent_comparison.sh $parameter_string $significant_variant_gene_pairs_file $time_step_independent_stem $time_step_independent_comparison_directory $visualization_directory
 fi
 
