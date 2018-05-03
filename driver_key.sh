@@ -93,10 +93,24 @@ fi
 ### 'all_cell_lines'
 ### 'heart_cell_lines'
 ### 'ipsc_cell_lines'
+# Also, do seperate analysis investigating:
+### 'all_hits'
+### 'early_time_step_hits'
+### 'late_time_step_hits'
 #########################################################
+if false; then
 num_permutations="100"
-sh chrom_hmm_enrichment_analysis.sh $parameter_string $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory
+hits_version="all_hits"
+sbatch chrom_hmm_enrichment_analysis.sh $parameter_string $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $hits_version
 
+num_permutations="100"
+hits_version="early_time_step_hits"
+sbatch chrom_hmm_enrichment_analysis.sh $parameter_string $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $hits_version
+
+num_permutations="100"
+hits_version="late_time_step_hits"
+sbatch chrom_hmm_enrichment_analysis.sh $parameter_string $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $hits_version
+fi
 
 
 

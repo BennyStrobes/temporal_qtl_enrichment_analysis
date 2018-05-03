@@ -9,7 +9,7 @@ import scipy.stats
 
 
 # First create dictionary list of the significant variant gene pairs where each key is of form $variantID"_"$geneID
-def extract_significant_variant_gene_pairs(file_name):
+def extract_significant_variant_gene_pairs(file_name, variant_gene_pair_time_step_info, hits_version):
     f = open(file_name)
     dicti = {}  # dictionary to keep variant gene pairs
     head_count = 0  # Used to skip header
@@ -28,7 +28,12 @@ def extract_significant_variant_gene_pairs(file_name):
             print('fundamental assumption error')
             pdb.set_trace()
         # Add variant gene pair to dictionary
-        dicti[rs_id + '_' + ensamble_id] = 1
+        if hits_version == 'all_hits':
+            dicti[rs_id + '_' + ensamble_id] = 1
+        elif hits_version == 'early_time_step_hits' and variant_gene_pair_time_step_info[rs_id + '_' + ensamble_id] == 'early_time_step_hits':
+            dicti[rs_id + '_' + ensamble_id] = 1
+        elif hits_version == 'late_time_step_hits' and variant_gene_pair_time_step_info[rs_id + '_' + ensamble_id] == 'late_time_step_hits':
+            dicti[rs_id + '_' + ensamble_id] = 1
     return dicti
 
 
@@ -222,8 +227,45 @@ def count_variant_overlap(chrom_num, chromosome, sig_variant_gene_pairs, variant
         county = county + chromosome[variant_position]
     return county
 
-# Count number of variants that overlap a marker on this chromosome
-
+def extract_variant_gene_pair_time_step_info(time_step_independent_stem):
+    # Dictionary to keep track of mapping from variant-gene pairs to vector of length time-steps taht contains pvalues
+    dicti = {}
+    # loop through all time steps
+    for time_step in range(16):
+        file_name = time_step_independent_stem + str(time_step) + '_eqtl_results.txt'
+        head_count = 0  # Used to skip header
+        f = open(file_name)
+        for line in f:
+            line = line.rstrip()
+            data = line.split()
+            if head_count == 0:
+                head_count = head_count + 1
+                continue
+            # Extract relevent info
+            rs_id = data[3]
+            ensamble_id = data[1]
+            pvalue = float(data[-1])
+            test_name = rs_id + '_' + ensamble_id
+            # If we've never seen this test before
+            if test_name not in dicti:
+                if time_step != 0:
+                    print('assumpriton erroro')
+                    pdb.set_trace()
+                dicti[test_name] = np.zeros(16)
+            dicti[test_name][time_step] = pvalue
+        f.close()
+    dicti2 = {}
+    counter = 0
+    for test_name in dicti.keys():
+        counter = counter + 1
+        pvalue_vec = dicti[test_name]
+        time_steps = np.arange(16)
+        slope = scipy.stats.linregress(time_steps,pvalue_vec)[0]
+        if slope < 0.0:
+            dicti2[test_name] = 'late_time_step_hits'
+        else:
+            dicti2[test_name] = 'early_time_step_hits'
+    return dicti2
 ############################################
 # Command Line Args!
 ############################################
@@ -234,6 +276,7 @@ chrom_hmm_input_dir = sys.argv[4]
 significant_variant_gene_pairs_file = sys.argv[5]
 time_step_independent_stem = sys.argv[6]
 output_root = sys.argv[7]
+hits_version = sys.argv[8]
 
 # Extract list of cell line ids used for this cell_line_version
 cell_line_ids = get_cell_line_ids(cell_line_version, chrom_hmm_input_dir)
@@ -243,11 +286,16 @@ cell_line_ids = get_cell_line_ids(cell_line_version, chrom_hmm_input_dir)
 # Only use this to extract maf and distance to tss info
 time_step_independent_file = time_step_independent_stem + '0_eqtl_results.txt'
 
+# Creating mapping from variant-gene pairs to a vector of length num_time_steps where each element in vector is a pvalue corresponding to that time stpe in the time step independent analysis
+variant_gene_pair_time_step_info = extract_variant_gene_pair_time_step_info(time_step_independent_stem)
+
+
 # Create Mapping from variant-gene pair to quartuple (chrom_num, variant_position, distToTss, MAF)
 variant_gene_pair_info = extract_variant_gene_pair_info(time_step_independent_file)
 
 # First create dictionary list of the significant variant gene pairs where each key is of form $variantID"_"$geneID
-sig_variant_gene_pairs = extract_significant_variant_gene_pairs(significant_variant_gene_pairs_file)
+sig_variant_gene_pairs = extract_significant_variant_gene_pairs(significant_variant_gene_pairs_file, variant_gene_pair_time_step_info, hits_version)
+print(len(sig_variant_gene_pairs))
 
 # Return list of length num_permutations where each element of the dictionary list of variant-gene pairs (of len(sig_variant_gene_pairs)) matched for dist_to_tss and maf
 perm_variant_gene_pairs = extract_perm_variant_gene_pairs(sig_variant_gene_pairs, time_step_independent_file, num_permutations, variant_gene_pair_info)
