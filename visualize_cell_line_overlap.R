@@ -108,7 +108,9 @@ plot_overlap_heatmap_cell_line_pc1 <- function(overlap_mat, output_file, version
 ###################
 real_overlap_matrix <- args[1]
 perm_overlap_matrix <- args[2]
-overlap_output_root <- args[3]
+time_step_independent_overlap_matrix <- args[3]
+time_step_independent_perm_overlap_matrix <- args[4]
+overlap_output_root <- args[5]
 
 
 
@@ -116,8 +118,15 @@ real_overlap <- load_in_data(real_overlap_matrix)
 
 perm_overlap <- load_in_data(perm_overlap_matrix)
 
+time_overlap <- load_in_data(time_step_independent_overlap_matrix)
+
+time_perm_overlap <- load_in_data(time_step_independent_perm_overlap_matrix)
+
 minimum <- min(min(real_overlap, na.rm=TRUE), min(perm_overlap, na.rm=TRUE))
 maximum <- max(max(real_overlap, na.rm=TRUE), max(perm_overlap, na.rm=TRUE))
+
+minimum_time <- min(min(time_overlap, na.rm=TRUE), min(time_perm_overlap, na.rm=TRUE))
+maximum_time <- max(max(time_overlap, na.rm=TRUE), max(time_perm_overlap, na.rm=TRUE))
 
 
 real_heatmap_output <- paste0(overlap_output_root, "real_heatmap_cell_line_pc1.png")
@@ -132,6 +141,15 @@ plot_overlap_heatmap(real_overlap, real_heatmap_output, "real", minimum, maximum
 # Make heatmap for real data
 perm_heatmap_output <- paste0(overlap_output_root, "perm_heatmap.png")
 plot_overlap_heatmap(perm_overlap, perm_heatmap_output, "perm", minimum, maximum)
+
+# Make heatmap for real data
+time_heatmap_output <- paste0(overlap_output_root, "time_step_independent_real_heatmap.png")
+plot_overlap_heatmap(time_overlap, time_heatmap_output, "time_ind_real", minimum_time, maximum_time)
+
+# Make heatmap for real data
+time_heatmap_output <- paste0(overlap_output_root, "time_step_independent_perm_heatmap.png")
+plot_overlap_heatmap(time_perm_overlap, time_heatmap_output, "time_ind_perm", minimum_time, maximum_time)
+
 
 
 

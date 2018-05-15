@@ -199,22 +199,42 @@ def print_overlap_matrix(overlap_matrix, cell_line_names, output_file):
         t.write(cell_line_name + '\t' + '\t'.join(overlap_matrix[i,:].astype(str)) + '\n')
     t.close()
 
-
+# Create dictionary list of all time-step significant variants
+def extract_sig_variants_from_time_step_independent_file(time_step_independent_stem):
+    varz = {}
+    for time_step in range(16):
+        file_name = time_step_independent_stem + str(time_step) + '_efdr_thresh_.1_significant_egenes.txt'
+        f = open(file_name)
+        head_count = 0
+        for line in f:
+            line = line.rstrip()
+            data = line.split()
+            if head_count == 0:
+                head_count = head_count + 1
+                continue
+            rs_id = data[3]
+            varz[rs_id] = 0
+        f.close()
+    return varz
 
 significant_variant_gene_pairs_file = sys.argv[1]
 dynamic_qtl_all_hits_file = sys.argv[2]
 genotype_file = sys.argv[3]
 real_overlap_matrix_file = sys.argv[4]
 perm_overlap_matrix_file = sys.argv[5]
+time_step_independent_overlap_matrix= sys.argv[6]
+time_step_independent_stem = sys.argv[7]
+time_step_independent_perm_overlap_matrix = sys.argv[8]
 
 # Create dictionary list of all tested variants
 tested_variants = extract_variants_from_dynamic_qtl_file(dynamic_qtl_all_hits_file)
 
+
+# Create dictionary list of all time-step significant variants
+time_step_sig_variants = extract_sig_variants_from_time_step_independent_file(time_step_independent_stem)
+
 # Create dictionary list of all significant variants
 sig_variants = extract_sig_variants_from_dynamic_qtl_file(significant_variant_gene_pairs_file)
-
-print(len(sig_variants))
-
 
 # Create mapping from variants to:
 ### 1. MAF (only have to create for tested_variants cause includes sig_variants)
@@ -225,9 +245,23 @@ variant_to_maf, cell_line_names = create_mapping_from_variant_to_maf(tested_vari
 overlap_matrix_real_counts = compute_overlap_matrix(sig_variants, variant_to_maf, cell_line_names)
 overlap_matrix_real = overlap_matrix_real_counts/len(sig_variants)
 
-num_perms=10
+# Compute matrix of dimension num_cell_lineXnum_cell_line where each element in the matrix represents the fraction of times those two cell lines were in the same genotype class
+overlap_matrix_time_step_ind_real_counts = compute_overlap_matrix(time_step_sig_variants, variant_to_maf, cell_line_names)
+overlap_matrix_time_step_ind_real = overlap_matrix_time_step_ind_real_counts/len(time_step_sig_variants)
+
+
+num_perms=1
 overlap_matrix_perm = compute_perm_overlap_matrix(tested_variants, sig_variants, variant_to_maf, cell_line_names, num_perms)
+
+num_perms=1
+overlap_matrix_time_step_ind_perm = compute_perm_overlap_matrix(tested_variants, time_step_sig_variants, variant_to_maf, cell_line_names, num_perms)
+
 
 print_overlap_matrix(overlap_matrix_real, cell_line_names, real_overlap_matrix_file)
 
 print_overlap_matrix(overlap_matrix_perm, cell_line_names, perm_overlap_matrix_file)
+
+print_overlap_matrix(overlap_matrix_time_step_ind_real, cell_line_names, time_step_independent_overlap_matrix)
+
+print_overlap_matrix(overlap_matrix_time_step_ind_perm, cell_line_names, time_step_independent_perm_overlap_matrix)
+

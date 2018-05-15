@@ -8,12 +8,12 @@
 #INPUT DATA
 #####################################################################
 # All output files will have this parameter string
-parameter_string="te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.01_"
+parameter_string="te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.05_"
 
 #File containing list of variant gene pairs that are significant
-significant_variant_gene_pairs_file="/project2/gilad/bstrober/ipsc_differentiation/dynamic_qtl_pipelines/ipsc_data_te/qtl_results/te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.01_significant_egenes.txt"
+significant_variant_gene_pairs_file="/project2/gilad/bstrober/ipsc_differentiation/dynamic_qtl_pipelines/ipsc_data_te/qtl_results/te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.05_significant_egenes.txt"
 
-all_significant_variant_gene_pairs_file="/project2/gilad/bstrober/ipsc_differentiation/dynamic_qtl_pipelines/ipsc_data_te/qtl_results/te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.01_significant.txt"
+all_significant_variant_gene_pairs_file="/project2/gilad/bstrober/ipsc_differentiation/dynamic_qtl_pipelines/ipsc_data_te/qtl_results/te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.05_significant.txt"
 
 
 
@@ -38,6 +38,8 @@ chrom_hmm_input_dir="/project2/gilad/bstrober/ipsc_differentiation/preprocess_in
 # File containing dosage based genotypes
 genotype_file="/project2/gilad/bstrober/ipsc_differentiation/preprocess/genotype/YRI_genotype.vcf"
 
+# File containing conversions from ensamble ids to gene symbols
+gencode_file="/project2/gilad/bstrober/ipsc_differentiation/preprocess_input_data/gencode.v19.annotation.gtf.gz"
 
 #####################################################################
 #OUTPUT DATA
@@ -58,6 +60,9 @@ time_step_independent_comparison_directory=$output_root"time_step_independent_co
 
 # Directory containing results for cell line overlap analysis
 cell_line_overlap_directory=$output_root"cell_line_overlap/"
+
+# Directory containing gene set enrichment analysis results
+gene_set_enrichment_directory=$output_root"gene_set_enrichment/"
 
 
 # Directory containing visualizations from all analyses
@@ -98,6 +103,7 @@ fi
 ### 'early_time_step_hits'
 ### 'late_time_step_hits'
 #########################################################
+
 if false; then
 num_permutations="100"
 hits_version="all_hits"
@@ -107,20 +113,26 @@ num_permutations="100"
 hits_version="early_time_step_hits"
 sbatch chrom_hmm_enrichment_analysis.sh $parameter_string $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $hits_version
 
+
 num_permutations="100"
 hits_version="late_time_step_hits"
 sbatch chrom_hmm_enrichment_analysis.sh $parameter_string $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $hits_version
+
+num_permutations="100"
+hits_version="change_in_sign_hits"
+sbatch chrom_hmm_enrichment_analysis.sh $parameter_string $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $hits_version
+
+
+Rscript global_odds_ratio_plotter.R $parameter_string $num_permutations $chrom_hmm_enrichment_directory $visualization_directory
+
 fi
-
-
 
 #########################################################
 # PART 3: Cell Line overlap analysis
 # Compute how often a given pair of cell lines overlap in their genotype in hits compared to background
 #########################################################
-
 if false; then
-sh cell_line_overlap_analysis.sh $all_significant_variant_gene_pairs_file $real_dynamic_qtl_results_file $genotype_file $parameter_string $cell_line_overlap_directory $visualization_directory
+sh cell_line_overlap_analysis.sh $significant_variant_gene_pairs_file $real_dynamic_qtl_results_file $genotype_file $parameter_string $cell_line_overlap_directory $visualization_directory $time_step_independent_stem
 fi
 
 
@@ -133,4 +145,11 @@ fi
 if false; then
 sh time_step_independent_comparison.sh $parameter_string $significant_variant_gene_pairs_file $time_step_independent_stem $time_step_independent_comparison_directory $visualization_directory
 fi
+
+#########################################################
+# PART 5: Run gene set enrichment analysis
+# Run gene set enrichment on dynamic qtl result
+#########################################################
+
+sh gene_set_enrichment_analysis.sh $parameter_string $significant_variant_gene_pairs_file $time_step_independent_stem $gencode_file $gene_set_enrichment_directory
 

@@ -34,6 +34,8 @@ def extract_significant_variant_gene_pairs(file_name, variant_gene_pair_time_ste
             dicti[rs_id + '_' + ensamble_id] = 1
         elif hits_version == 'late_time_step_hits' and variant_gene_pair_time_step_info[rs_id + '_' + ensamble_id] == 'late_time_step_hits':
             dicti[rs_id + '_' + ensamble_id] = 1
+        elif hits_version == 'change_in_sign_hits' and variant_gene_pair_time_step_info[rs_id + '_' + ensamble_id] == 'change_in_sign_hits':
+            dicti[rs_id + '_' + ensamble_id] = 1
     return dicti
 
 
@@ -160,14 +162,16 @@ def get_cell_line_ids(cell_line_version, chrom_hmm_input_dir):
     cell_line_ids = []
     if cell_line_version == 'heart_cell_lines':
         cell_line_ids.append('E095')
-        cell_line_ids.append('E104')
+        #cell_line_ids.append('E104')
         cell_line_ids.append('E105')
+        cell_line_ids.append('E083')
     elif cell_line_version == 'ipsc_cell_lines':
         cell_line_ids.append('E018')
         cell_line_ids.append('E019')
         cell_line_ids.append('E020')
         cell_line_ids.append('E021')
         cell_line_ids.append('E022')
+
     elif cell_line_version == 'all_cell_lines':
         for file_name in os.listdir(chrom_hmm_input_dir):
             if file_name.endswith('mnemonics.bed.gz') == False:
@@ -227,9 +231,36 @@ def count_variant_overlap(chrom_num, chromosome, sig_variant_gene_pairs, variant
         county = county + chromosome[variant_position]
     return county
 
+def count_variant_overlap_specificity(chrom_num, heart_chromosome, ipsc_chromosome, sig_variant_gene_pairs, variant_gene_pair_info, cell_line_version):
+    county = 0
+    for variant_gene in sig_variant_gene_pairs.keys():
+        variant_gene_pair_dict = variant_gene_pair_info[variant_gene]
+        if variant_gene_pair_dict['chrom_num'] != chrom_num:
+            continue
+        variant_position = int(variant_gene_pair_dict['variant_position'])
+        if cell_line_version == 'heart_and_ipsc_cell_lines':
+            if heart_chromosome[variant_position] == 1.0 and ipsc_chromosome[variant_position] == 1.0:
+                county = county + 1
+        elif cell_line_version == 'heart_only_cell_lines':
+            if heart_chromosome[variant_position] == 1.0 and ipsc_chromosome[variant_position] == 0.0:
+                county = county + 1
+        elif cell_line_version == 'ipsc_only_cell_lines':
+            if heart_chromosome[variant_position] == 0.0 and ipsc_chromosome[variant_position] == 1.0:
+                county = county + 1
+    return county
+
+def in_same_direction(estimated_t0, estimated_t15):
+    if estimated_t0 <= .5 and estimated_t15 <= .5:
+        return True
+    elif estimated_t0 > .5 and estimated_t15 > .5:
+        return True
+    else:
+        return False
+
 def extract_variant_gene_pair_time_step_info(time_step_independent_stem):
     # Dictionary to keep track of mapping from variant-gene pairs to vector of length time-steps taht contains pvalues
     dicti = {}
+    dicti_pval = {}
     # loop through all time steps
     for time_step in range(16):
         file_name = time_step_independent_stem + str(time_step) + '_eqtl_results.txt'
@@ -245,6 +276,9 @@ def extract_variant_gene_pair_time_step_info(time_step_independent_stem):
             rs_id = data[3]
             ensamble_id = data[1]
             pvalue = float(data[-1])
+            alpha = float(data[-3])
+            beta = float(data[-2])
+            allelic_fraction = alpha/(alpha+beta)
             test_name = rs_id + '_' + ensamble_id
             # If we've never seen this test before
             if test_name not in dicti:
@@ -252,19 +286,43 @@ def extract_variant_gene_pair_time_step_info(time_step_independent_stem):
                     print('assumpriton erroro')
                     pdb.set_trace()
                 dicti[test_name] = np.zeros(16)
-            dicti[test_name][time_step] = pvalue
+            dicti[test_name][time_step] = allelic_fraction
+            # If we've never seen this test before
+            if test_name not in dicti_pval:
+                if time_step != 0:
+                    print('assumpriton erroro')
+                    pdb.set_trace()
+                dicti_pval[test_name] = np.zeros(16)
+            dicti_pval[test_name][time_step] = pvalue
         f.close()
     dicti2 = {}
     counter = 0
     for test_name in dicti.keys():
         counter = counter + 1
-        pvalue_vec = dicti[test_name]
+        allelic_vec = dicti[test_name]
+        pvalue_vec = dicti_pval[test_name]
         time_steps = np.arange(16)
-        slope = scipy.stats.linregress(time_steps,pvalue_vec)[0]
-        if slope < 0.0:
-            dicti2[test_name] = 'late_time_step_hits'
+        result = scipy.stats.linregress(time_steps,allelic_vec)
+        slope = result[0]
+        intercept = result[1]
+        estimated_t0 = intercept
+        estimated_t15 = intercept + (slope*15.0)
+        pvalue = result[3]
+        '''
+        if pvalue < .2:
+            if abs(estimated_t15 - .5) > abs(estimated_t0 - .5):
+                dicti2[test_name] = 'late_time_step_hits'
+            else:
+                dicti2[test_name] = 'early_time_step_hits'
         else:
+            dicti2[test_name] = 'neither'
+        '''
+        if abs(estimated_t15 - .5) > abs(estimated_t0 - .5) and in_same_direction(estimated_t0, estimated_t15):
+            dicti2[test_name] = 'late_time_step_hits'
+        elif abs(estimated_t15 - .5) <= abs(estimated_t0 - .5) and in_same_direction(estimated_t0, estimated_t15):
             dicti2[test_name] = 'early_time_step_hits'
+        else:
+            dicti2[test_name] = 'change_in_sign_hits'
     return dicti2
 ############################################
 # Command Line Args!
@@ -289,7 +347,6 @@ time_step_independent_file = time_step_independent_stem + '0_eqtl_results.txt'
 # Creating mapping from variant-gene pairs to a vector of length num_time_steps where each element in vector is a pvalue corresponding to that time stpe in the time step independent analysis
 variant_gene_pair_time_step_info = extract_variant_gene_pair_time_step_info(time_step_independent_stem)
 
-
 # Create Mapping from variant-gene pair to quartuple (chrom_num, variant_position, distToTss, MAF)
 variant_gene_pair_info = extract_variant_gene_pair_info(time_step_independent_file)
 
@@ -299,7 +356,6 @@ print(len(sig_variant_gene_pairs))
 
 # Return list of length num_permutations where each element of the dictionary list of variant-gene pairs (of len(sig_variant_gene_pairs)) matched for dist_to_tss and maf
 perm_variant_gene_pairs = extract_perm_variant_gene_pairs(sig_variant_gene_pairs, time_step_independent_file, num_permutations, variant_gene_pair_info)
-
 #############################
 # Count up number of times a variant overlaps one of our markers
 ###############################
@@ -309,26 +365,41 @@ perm_overlaps = np.zeros(num_permutations) # initialize vector of perm counts
 # Do seperately for each chromosome
 for chrom_num in range(1,23):
     print(chrom_num)
-    # Make binary array length of a chromosome. If array == 0, no marker there. If array == 1, there is a marker there
-    chromosome = make_binary_chromosome(chrom_num, chrom_hmm_input_dir, cell_line_ids, marker_type)
+    if cell_line_version == 'heart_cell_lines' or cell_line_version == 'ipsc_cell_lines' or cell_line_version == 'all_cell_lines':
+        # Make binary array length of a chromosome. If array == 0, no marker there. If array == 1, there is a marker there
+        chromosome = make_binary_chromosome(chrom_num, chrom_hmm_input_dir, cell_line_ids, marker_type)
 
-    # Count number of variants that overlap a marker on this chromosome
-    real_overlaps = real_overlaps + count_variant_overlap(chrom_num, chromosome, sig_variant_gene_pairs, variant_gene_pair_info)
+        # Count number of variants that overlap a marker on this chromosome
+        real_overlaps = real_overlaps + count_variant_overlap(chrom_num, chromosome, sig_variant_gene_pairs, variant_gene_pair_info)
      
-    # Count number of variants that overlap a marker on this chromosome
-    for perm_num in range(num_permutations):
-        perm_overlaps[perm_num] = perm_overlaps[perm_num] + count_variant_overlap(chrom_num, chromosome, perm_variant_gene_pairs[perm_num], variant_gene_pair_info)
+        # Count number of variants that overlap a marker on this chromosome
+        for perm_num in range(num_permutations):
+            perm_overlaps[perm_num] = perm_overlaps[perm_num] + count_variant_overlap(chrom_num, chromosome, perm_variant_gene_pairs[perm_num], variant_gene_pair_info)
+    elif cell_line_version == 'heart_and_ipsc_cell_lines' or cell_line_version == 'heart_only_cell_lines' or cell_line_version == 'ipsc_only_cell_lines':
+        heart_cell_line_ids = get_cell_line_ids('heart_cell_lines', chrom_hmm_input_dir)
+        ipsc_cell_line_ids = get_cell_line_ids('ipsc_cell_lines', chrom_hmm_input_dir)
+        # Make binary array length of a chromosome. If array == 0, no marker there. If array == 1, there is a marker there
+        heart_chromosome = make_binary_chromosome(chrom_num, chrom_hmm_input_dir, heart_cell_line_ids, marker_type)
+        ipsc_chromosome = make_binary_chromosome(chrom_num, chrom_hmm_input_dir, ipsc_cell_line_ids, marker_type)
+
+
+        # Count number of variants that overlap a marker on this chromosome
+        real_overlaps = real_overlaps + count_variant_overlap_specificity(chrom_num, heart_chromosome, ipsc_chromosome, sig_variant_gene_pairs, variant_gene_pair_info, cell_line_version)
+
+        # Count number of variants that overlap a marker on this chromosome
+        for perm_num in range(num_permutations):
+            perm_overlaps[perm_num] = perm_overlaps[perm_num] + count_variant_overlap_specificity(chrom_num, heart_chromosome, ipsc_chromosome, perm_variant_gene_pairs[perm_num], variant_gene_pair_info, cell_line_version)
 
 # For each permutation run, compute fischers exact test and print to output file
-t = open(output_root + '_chrom_hmm_enrichments.txt', 'w')
+t = open(output_root + '_enrich.txt', 'w')
 num_samp = len(sig_variant_gene_pairs)
-t.write('odds_ratio\tpvalue\n')
+t.write('real_overlaps\treal_misses\tperm_overlaps\tperm_misses\todds_ratio\tpvalue\n')
 for perm_num in range(num_permutations):
     aa = real_overlaps
     bb = num_samp - real_overlaps
     cc = perm_overlaps[perm_num]
     dd = num_samp - cc
     odds_ratio, pvalue = scipy.stats.fisher_exact([[aa,bb],[cc,dd]])
-    t.write(str(odds_ratio) + '\t' + str(pvalue) + '\n')
+    t.write(str(aa) + '\t' + str(bb) + '\t' + str(cc) + '\t' + str(dd) + '\t' + str(odds_ratio) + '\t' + str(pvalue) + '\n')
 t.close()
 
