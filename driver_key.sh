@@ -7,13 +7,24 @@
 #####################################################################
 #INPUT DATA
 #####################################################################
+#### FDR <= .01
 # All output files will have this parameter string
-parameter_string="te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.05_"
+parameter_string="te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.01_"
 
 #File containing list of variant gene pairs that are significant
-significant_variant_gene_pairs_file="/project2/gilad/bstrober/ipsc_differentiation/dynamic_qtl_pipelines/ipsc_data_te/qtl_results/te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.05_significant_egenes.txt"
+significant_variant_gene_pairs_file="/project2/gilad/bstrober/ipsc_differentiation/dynamic_qtl_pipelines/ipsc_data_te/qtl_results/te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.01_significant_egenes.txt"
 
-all_significant_variant_gene_pairs_file="/project2/gilad/bstrober/ipsc_differentiation/dynamic_qtl_pipelines/ipsc_data_te/qtl_results/te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.05_significant.txt"
+all_significant_variant_gene_pairs_file="/project2/gilad/bstrober/ipsc_differentiation/dynamic_qtl_pipelines/ipsc_data_te/qtl_results/te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.01_significant.txt"
+
+
+#### FDR <= .01
+# All output files will have this parameter string
+parameter_string_05="te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.05_"
+
+#File containing list of variant gene pairs that are significant
+significant_variant_gene_pairs_file_05="/project2/gilad/bstrober/ipsc_differentiation/dynamic_qtl_pipelines/ipsc_data_te/qtl_results/te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.05_significant_egenes.txt"
+
+all_significant_variant_gene_pairs_file_05="/project2/gilad/bstrober/ipsc_differentiation/dynamic_qtl_pipelines/ipsc_data_te/qtl_results/te_log_linear_environmental_variable_time_steps_optimizer_LBFGS_genotype_round_covariate_method_cell_line_pc1Xtime_permutation_scheme_sample_null_efdr_.05_significant.txt"
 
 
 
@@ -41,6 +52,10 @@ genotype_file="/project2/gilad/bstrober/ipsc_differentiation/preprocess/genotype
 # File containing conversions from ensamble ids to gene symbols
 gencode_file="/project2/gilad/bstrober/ipsc_differentiation/preprocess_input_data/gencode.v19.annotation.gtf.gz"
 
+
+# Directory containing gsea data
+gsea_data_dir="/project2/gilad/bstrober/tools/tools/gsea/data/"
+
 #####################################################################
 #OUTPUT DATA
 #####################################################################
@@ -48,9 +63,6 @@ gencode_file="/project2/gilad/bstrober/ipsc_differentiation/preprocess_input_dat
 # ROOT DIRECTORY FOR ALL OUTPUT FILES
 output_root="/project2/gilad/bstrober/ipsc_differentiation/dynamic_qtl_pipelines/temporal_qtl_enrichment_analysis/"
 
-
-# Directory containing results for distance to tss analysis
-distance_to_tss_directory=$output_root"distance_to_tss/"
 
 # Directory containing results for chromHmm enrichment analysis
 chrom_hmm_enrichment_directory=$output_root"chrom_hmm_enrichment/"
@@ -71,21 +83,13 @@ visualization_directory=$output_root"visualization/"
 
 
 
-
 #########################################################
-# PART 1: Distance Analysis
-# Compute distance to TSS for all hits.
-# Compute distance to TSS for matched background set.
+# PART 1: Run gene set enrichment analysis
+# Run gene set enrichment on dynamic qtl result
 #########################################################
-
-# Number of background sets/permutations to run
-num_permutations="100"
 if false; then
-sh distance_analysis.sh $parameter_string $significant_variant_gene_pairs_file $time_step_independent_stem $distance_to_tss_directory $visualization_directory $num_permutations
+sbatch gene_set_enrichment_analysis.sh $parameter_string $significant_variant_gene_pairs_file $time_step_independent_stem $gencode_file $gene_set_enrichment_directory $gsea_data_dir
 fi
-
-
-
 
 
 #########################################################
@@ -95,33 +99,45 @@ fi
 ### B. 'enhancer'
 # based on Chromhmm cell types for hits vs randomly matched (for maf and disttoTss) background
 # Perform analysis based on:
-### 'all_cell_lines'
 ### 'heart_cell_lines'
 ### 'ipsc_cell_lines'
 # Also, do seperate analysis investigating:
-### 'all_hits'
+### 'change_in_sign_hits'
 ### 'early_time_step_hits'
 ### 'late_time_step_hits'
+## Define 'change_in_sign_hits' using error_bound
+
+##########################
+# We use hits defined at eFDR <= .05 to increase our sample size in the enrichment analysis
 #########################################################
+num_permutations="100"
 
 if false; then
-num_permutations="100"
-hits_version="all_hits"
-sbatch chrom_hmm_enrichment_analysis.sh $parameter_string $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $hits_version
+# Run for a range of error bounds
+error_bound=".0"
+sbatch chrom_hmm_enrichment_analysis.sh $parameter_string_05 $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file_05 $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $error_bound
 
-num_permutations="100"
-hits_version="early_time_step_hits"
-sbatch chrom_hmm_enrichment_analysis.sh $parameter_string $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $hits_version
+error_bound=".005"
+sbatch chrom_hmm_enrichment_analysis.sh $parameter_string_05 $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file_05 $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $error_bound
+
+error_bound=".01"
+sbatch chrom_hmm_enrichment_analysis.sh $parameter_string_05 $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file_05 $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $error_bound
+
+error_bound=".015"
+sbatch chrom_hmm_enrichment_analysis.sh $parameter_string_05 $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file_05 $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $error_bound
+
+error_bound=".02"
+sbatch chrom_hmm_enrichment_analysis.sh $parameter_string_05 $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file_05 $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $error_bound
+
+error_bound=".025"
+sbatch chrom_hmm_enrichment_analysis.sh $parameter_string_05 $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file_05 $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $error_bound
+
+error_bound=".03"
+sbatch chrom_hmm_enrichment_analysis.sh $parameter_string_05 $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file_05 $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $error_bound
+fi
 
 
-num_permutations="100"
-hits_version="late_time_step_hits"
-sbatch chrom_hmm_enrichment_analysis.sh $parameter_string $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $hits_version
-
-num_permutations="100"
-hits_version="change_in_sign_hits"
-sbatch chrom_hmm_enrichment_analysis.sh $parameter_string $num_permutations $chrom_hmm_input_dir $significant_variant_gene_pairs_file $time_step_independent_stem $chrom_hmm_enrichment_directory $visualization_directory $hits_version
-
+if false; then
 
 Rscript global_odds_ratio_plotter.R $parameter_string $num_permutations $chrom_hmm_enrichment_directory $visualization_directory
 
@@ -145,11 +161,4 @@ fi
 if false; then
 sh time_step_independent_comparison.sh $parameter_string $significant_variant_gene_pairs_file $time_step_independent_stem $time_step_independent_comparison_directory $visualization_directory
 fi
-
-#########################################################
-# PART 5: Run gene set enrichment analysis
-# Run gene set enrichment on dynamic qtl result
-#########################################################
-
-sh gene_set_enrichment_analysis.sh $parameter_string $significant_variant_gene_pairs_file $time_step_independent_stem $gencode_file $gene_set_enrichment_directory
 

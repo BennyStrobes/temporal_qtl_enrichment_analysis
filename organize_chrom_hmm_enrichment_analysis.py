@@ -249,15 +249,24 @@ def count_variant_overlap_specificity(chrom_num, heart_chromosome, ipsc_chromoso
                 county = county + 1
     return county
 
-def in_same_direction(estimated_t0, estimated_t15):
+def in_same_direction(estimated_t0, estimated_t15, error_bound):
+    # Both going in same direction
     if estimated_t0 <= .5 and estimated_t15 <= .5:
         return True
     elif estimated_t0 > .5 and estimated_t15 > .5:
-        return True
-    else:
-        return False
+        return True 
+    # Different directions
+    diff_t0 = abs(estimated_t0 - .5)
+    diff_t15 = abs(estimated_t15 - .5)
+    if diff_t0 >= diff_t15:
+        if diff_t15 <= error_bound:
+            return True 
+    elif diff_t15 > diff_t0:
+        if diff_t0 <= error_bound:
+            return True
+    return False
 
-def extract_variant_gene_pair_time_step_info(time_step_independent_stem):
+def extract_variant_gene_pair_time_step_info(time_step_independent_stem, error_bound):
     # Dictionary to keep track of mapping from variant-gene pairs to vector of length time-steps taht contains pvalues
     dicti = {}
     dicti_pval = {}
@@ -308,18 +317,9 @@ def extract_variant_gene_pair_time_step_info(time_step_independent_stem):
         estimated_t0 = intercept
         estimated_t15 = intercept + (slope*15.0)
         pvalue = result[3]
-        '''
-        if pvalue < .2:
-            if abs(estimated_t15 - .5) > abs(estimated_t0 - .5):
-                dicti2[test_name] = 'late_time_step_hits'
-            else:
-                dicti2[test_name] = 'early_time_step_hits'
-        else:
-            dicti2[test_name] = 'neither'
-        '''
-        if abs(estimated_t15 - .5) > abs(estimated_t0 - .5) and in_same_direction(estimated_t0, estimated_t15):
+        if abs(estimated_t15 - .5) > abs(estimated_t0 - .5) and in_same_direction(estimated_t0, estimated_t15, error_bound):
             dicti2[test_name] = 'late_time_step_hits'
-        elif abs(estimated_t15 - .5) <= abs(estimated_t0 - .5) and in_same_direction(estimated_t0, estimated_t15):
+        elif abs(estimated_t15 - .5) <= abs(estimated_t0 - .5) and in_same_direction(estimated_t0, estimated_t15, error_bound):
             dicti2[test_name] = 'early_time_step_hits'
         else:
             dicti2[test_name] = 'change_in_sign_hits'
@@ -335,6 +335,7 @@ significant_variant_gene_pairs_file = sys.argv[5]
 time_step_independent_stem = sys.argv[6]
 output_root = sys.argv[7]
 hits_version = sys.argv[8]
+error_bound = float(sys.argv[9])
 
 # Extract list of cell line ids used for this cell_line_version
 cell_line_ids = get_cell_line_ids(cell_line_version, chrom_hmm_input_dir)
@@ -345,7 +346,7 @@ cell_line_ids = get_cell_line_ids(cell_line_version, chrom_hmm_input_dir)
 time_step_independent_file = time_step_independent_stem + '0_eqtl_results.txt'
 
 # Creating mapping from variant-gene pairs to a vector of length num_time_steps where each element in vector is a pvalue corresponding to that time stpe in the time step independent analysis
-variant_gene_pair_time_step_info = extract_variant_gene_pair_time_step_info(time_step_independent_stem)
+variant_gene_pair_time_step_info = extract_variant_gene_pair_time_step_info(time_step_independent_stem, error_bound)
 
 # Create Mapping from variant-gene pair to quartuple (chrom_num, variant_position, distToTss, MAF)
 variant_gene_pair_info = extract_variant_gene_pair_info(time_step_independent_file)
@@ -364,7 +365,6 @@ perm_overlaps = np.zeros(num_permutations) # initialize vector of perm counts
 
 # Do seperately for each chromosome
 for chrom_num in range(1,23):
-    print(chrom_num)
     if cell_line_version == 'heart_cell_lines' or cell_line_version == 'ipsc_cell_lines' or cell_line_version == 'all_cell_lines':
         # Make binary array length of a chromosome. If array == 0, no marker there. If array == 1, there is a marker there
         chromosome = make_binary_chromosome(chrom_num, chrom_hmm_input_dir, cell_line_ids, marker_type)
