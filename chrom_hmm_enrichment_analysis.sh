@@ -49,6 +49,6 @@ for hits_version in "${hits_versions[@]}"; do
 
 done
 
-if false; then
-Rscript visualize_chrom_hmm_enrichment_analysis.R $chrom_hmm_enrichment_directory$parameter_string $visualization_directory$parameter_string $hits_version
-fi
+
+Rscript visualize_chrom_hmm_enrichment_analysis.R $chrom_hmm_enrichment_directory$parameter_string $visualization_directory$parameter_string $error_bound $num_permutations
+

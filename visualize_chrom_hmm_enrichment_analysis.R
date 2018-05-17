@@ -7,67 +7,6 @@ library(reshape)
 
 
 
-
-
-
-
-odds_ratio_boxplot <- function(promotor_ipsc, promotor_cardio, promotor_all, output_file, marker_type, hits_version) {
-    odds_ratios <- c()
-    cell_lines <- c()
-
-    odds_ratios <- c(odds_ratios, promotor_ipsc$odds_ratio)
-    cell_lines <- c(cell_lines, rep("ipsc_lines", length(promotor_ipsc$odds_ratio)))
-
-
-    odds_ratios <- c(odds_ratios, promotor_cardio$odds_ratio)
-    cell_lines <- c(cell_lines, rep("heart_lines", length(promotor_cardio$odds_ratio)))
-
-    odds_ratios <- c(odds_ratios, promotor_all$odds_ratio)
-    cell_lines <- c(cell_lines, rep("all_lines", length(promotor_all$odds_ratio)))
-
-    df <- data.frame(odds_ratio=odds_ratios,cell_lines=factor(cell_lines))
-        # PLOT
-    boxplot <- ggplot(df, aes(x=cell_lines,y=odds_ratios,fill=cell_lines)) + geom_boxplot() + labs(x = "Cell Line", y = "Odds Ratio")
-    boxplot <- boxplot + theme(text = element_text(size=18))
-    boxplot <- boxplot + geom_hline(yintercept = 1.0) 
-    boxplot <- boxplot + theme(legend.position="none")
-    boxplot <- boxplot + labs(x = "chromHMM cell lines", y = "Odds Ratio", title = paste0("hits = ", hits_version, " / marker = ",marker_type))
-    ggsave(boxplot, file=output_file,width = 20,height=10.5,units="cm")
-
-}
-
-
-odds_ratio_boxplot_v2 <- function(promotor_heart_ipsc, promotor_heart_only, promotor_ipsc_only, output_file, marker_type, hits_version) {
-    odds_ratios <- c()
-    cell_lines <- c()
-
-    odds_ratios <- c(odds_ratios, promotor_heart_ipsc)
-    cell_lines <- c(cell_lines, rep("heart_ipsc_lines", length(promotor_heart_ipsc)))
-
-
-    odds_ratios <- c(odds_ratios, promotor_heart_only)
-    cell_lines <- c(cell_lines, rep("heart_only_lines", length(promotor_heart_only)))
-
-    odds_ratios <- c(odds_ratios, promotor_ipsc_only)
-    cell_lines <- c(cell_lines, rep("ipsc_only_lines", length(promotor_ipsc_only)))
-
-    df <- data.frame(odds_ratio=odds_ratios,cell_lines=factor(cell_lines))
-        # PLOT
-    boxplot <- ggplot(df, aes(x=cell_lines,y=odds_ratios,fill=cell_lines)) + geom_boxplot() + labs(x = "Cell Line", y = "Odds Ratio")
-    boxplot <- boxplot + theme(text = element_text(size=18))
-    boxplot <- boxplot + geom_hline(yintercept = 1.0) 
-    boxplot <- boxplot + theme(legend.position="none")
-    boxplot <- boxplot + labs(x = "chromHMM cell lines", y = "Odds Ratio", title = paste0("hits = ", hits_version, " / marker = ",marker_type))
-    ggsave(boxplot, file=output_file,width = 20,height=10.5,units="cm")
-
-
-}
-
-
-
-
-
-
 load_in_odds_ratios <- function(file_name, adding_constant) {
     aa <- read.table(file_name,header=TRUE)
 
@@ -80,76 +19,126 @@ load_in_odds_ratios <- function(file_name, adding_constant) {
 }
 
 
+odds_ratio_cell_line_specific_boxplot <- function(ipsc_early_or, ipsc_late_or, cardio_early_or, cardio_late_or, ipsc_change_or, cardio_change_or, output_file, marker_type) {
+    odds_ratios <- c()
+    roadmap_cell_types <- c()
+    dynamic_qtl_versions <- c()
+
+
+    odds_ratios <- c(odds_ratios, ipsc_early_or)
+    roadmap_cell_types <- c(roadmap_cell_types, rep("ipsc", length(ipsc_early_or)))
+    dynamic_qtl_versions <- c(dynamic_qtl_versions, rep("early_qtl", length(ipsc_early_or)))
+
+
+    odds_ratios <- c(odds_ratios, ipsc_late_or)
+    roadmap_cell_types <- c(roadmap_cell_types, rep("ipsc", length(ipsc_late_or)))
+    dynamic_qtl_versions <- c(dynamic_qtl_versions, rep("late_qtl", length(ipsc_late_or)))
+
+    odds_ratios <- c(odds_ratios, cardio_early_or)
+    roadmap_cell_types <- c(roadmap_cell_types, rep("heart", length(cardio_early_or)))
+    dynamic_qtl_versions <- c(dynamic_qtl_versions, rep("early_qtl", length(cardio_early_or)))
+
+    odds_ratios <- c(odds_ratios, cardio_late_or)
+    roadmap_cell_types <- c(roadmap_cell_types, rep("heart", length(cardio_early_or)))
+    dynamic_qtl_versions <- c(dynamic_qtl_versions, rep("late_qtl", length(cardio_late_or)))
+
+
+    odds_ratios <- c(odds_ratios, ipsc_change_or)
+    roadmap_cell_types <- c(roadmap_cell_types, rep("ipsc", length(ipsc_change_or)))
+    dynamic_qtl_versions <- c(dynamic_qtl_versions, rep("change_qtl", length(ipsc_change_or)))
+
+    odds_ratios <- c(odds_ratios, cardio_change_or)
+    roadmap_cell_types <- c(roadmap_cell_types, rep("heart", length(cardio_change_or)))
+    dynamic_qtl_versions <- c(dynamic_qtl_versions, rep("change_qtl", length(cardio_change_or)))
+
+    df <- data.frame(odds_ratio=odds_ratios,roadmap_cell_type=factor(roadmap_cell_types,levels=c("ipsc","heart")), qtl_version=factor(dynamic_qtl_versions))
+    print(df)
+    # PLOT
+    boxplot <- ggplot(df, aes(x=roadmap_cell_type,y=odds_ratio,fill=qtl_version)) + geom_boxplot() + labs(x = "Roadmap Cell Type", y = "Odds Ratio", title= marker_type)
+    boxplot <- boxplot + theme(text = element_text(size=18))
+    boxplot <- boxplot + geom_hline(yintercept = 1.0) 
+    boxplot <- boxplot 
+    boxplot <- boxplot
+    ggsave(boxplot, file=output_file,width = 20,height=10.5,units="cm")
+
+
+}
 
 
 input_root = args[1]
 output_root = args[2]
-hits_version = args[3]
-
-promotor_ipsc_file <- paste0(input_root, "mark_promotor_cl_ipsc_cell_lines_hits_", hits_version,"_num_100_enrich.txt")
-promotor_cardio_file <- paste0(input_root, "mark_promotor_cl_heart_cell_lines_hits_", hits_version,"_num_100_enrich.txt")
-promotor_all_file <- paste0(input_root, "mark_promotor_cl_all_cell_lines_hits_", hits_version,"_num_100_enrich.txt")
-
-enhancer_ipsc_file <- paste0(input_root, "mark_enhancer_cl_ipsc_cell_lines_hits_", hits_version,"_num_100_enrich.txt")
-enhancer_cardio_file <- paste0(input_root, "mark_enhancer_cl_heart_cell_lines_hits_", hits_version,"_num_100_enrich.txt")
-enhancer_all_file <- paste0(input_root, "mark_enhancer_cl_all_cell_lines_hits_", hits_version,"_num_100_enrich.txt")
+error_bound = args[3]
+num_permutations = args[4]
 
 
-promotor_heart_ipsc_file <- paste0(input_root, "mark_promotor_cl_heart_and_ipsc_cell_lines_hits_", hits_version,"_num_100_enrich.txt")
-promotor_heart_only_file <- paste0(input_root, "mark_promotor_cl_heart_only_cell_lines_hits_", hits_version,"_num_100_enrich.txt")
-promotor_ipsc_only_file <- paste0(input_root, "mark_promotor_cl_ipsc_only_cell_lines_hits_", hits_version,"_num_100_enrich.txt")
+adding_constant <- 0
+
+########################
+# Promoter
+########################
+promoter_ipsc_file_early <- paste0(input_root, "mark_promotor_cl_ipsc_cell_lines_hits_early_time_step_hits_num_", num_permutations, "_bound_",error_bound, "_enrich.txt" )
+promoter_ipsc_file_late <- paste0(input_root, "mark_promotor_cl_ipsc_cell_lines_hits_late_time_step_hits_num_", num_permutations, "_bound_",error_bound, "_enrich.txt" )
+promoter_ipsc_file_change <- paste0(input_root, "mark_promotor_cl_ipsc_cell_lines_hits_change_in_sign_hits_num_", num_permutations, "_bound_",error_bound, "_enrich.txt" )
 
 
-enhancer_heart_ipsc_file <- paste0(input_root, "mark_enhancer_cl_heart_and_ipsc_cell_lines_hits_", hits_version,"_num_100_enrich.txt")
-enhancer_heart_only_file <- paste0(input_root, "mark_enhancer_cl_heart_only_cell_lines_hits_", hits_version,"_num_100_enrich.txt")
-enhancer_ipsc_only_file <- paste0(input_root, "mark_enhancer_cl_ipsc_only_cell_lines_hits_", hits_version,"_num_100_enrich.txt")
-
-
-adding_constant <- 1
-
-promotor_heart_ipsc <- load_in_odds_ratios(promotor_heart_ipsc_file, adding_constant)
-promotor_heart_only <- load_in_odds_ratios(promotor_heart_only_file, adding_constant)
-promotor_ipsc_only <- load_in_odds_ratios(promotor_ipsc_only_file, adding_constant)
-
-enhancer_heart_ipsc <- load_in_odds_ratios(enhancer_heart_ipsc_file, adding_constant)
-enhancer_heart_only <- load_in_odds_ratios(enhancer_heart_only_file, adding_constant)
-enhancer_ipsc_only <- load_in_odds_ratios(enhancer_ipsc_only_file, adding_constant)
-
-#promotor_ipsc <- read.table(promotor_ipsc_file, header=TRUE)
-#promotor_cardio <- read.table(promotor_cardio_file, header=TRUE)
-#promotor_all <- read.table(promotor_all_file, header=TRUE)
-
-#enhancer_ipsc <- read.table(enhancer_ipsc_file, header=TRUE)
-#enhancer_cardio <- read.table(enhancer_cardio_file, header=TRUE)
-#enhancer_all <- read.table(enhancer_all_file, header=TRUE)
-
-
-
-output_file <- paste0(output_root, hits_version, "_marker_type_promotor_odds_ratio_enrichment_v2.png")
-odds_ratio_boxplot_v2(promotor_heart_ipsc, promotor_heart_only, promotor_ipsc_only, output_file, "promotor", hits_version)
-
-
-
-output_file <- paste0(output_root, hits_version, "_marker_type_enhancer_odds_ratio_enrichment_v2.png")
-odds_ratio_boxplot_v2(enhancer_heart_ipsc, enhancer_heart_only, enhancer_ipsc_only, output_file, "enhancer", hits_version)
+promoter_cardio_file_early <- paste0(input_root, "mark_promotor_cl_heart_cell_lines_hits_early_time_step_hits_num_", num_permutations, "_bound_",error_bound, "_enrich.txt" )
+promoter_cardio_file_late <- paste0(input_root, "mark_promotor_cl_heart_cell_lines_hits_late_time_step_hits_num_", num_permutations, "_bound_",error_bound, "_enrich.txt" )
+promoter_cardio_file_change <- paste0(input_root, "mark_promotor_cl_heart_cell_lines_hits_change_in_sign_hits_num_", num_permutations, "_bound_",error_bound, "_enrich.txt" )
 
 
 
 
 
 
+promoter_ipsc_early_or <- load_in_odds_ratios(promoter_ipsc_file_early, adding_constant)
+promoter_ipsc_late_or <- load_in_odds_ratios(promoter_ipsc_file_late, adding_constant)
+promoter_ipsc_change_or <- load_in_odds_ratios(promoter_ipsc_file_change, adding_constant)
+
+promoter_cardio_early_or <- load_in_odds_ratios(promoter_cardio_file_early, adding_constant)
+promoter_cardio_late_or <- load_in_odds_ratios(promoter_cardio_file_late, adding_constant)
+promoter_cardio_change_or <- load_in_odds_ratios(promoter_cardio_file_change, adding_constant)
+
+
+
+
+output_file <- paste0(output_root, "promoter_cell_line_specific_num_perm_", num_permutations,"_error_bound_", error_bound, "_odds_ratios.png")
+
+odds_ratio_cell_line_specific_boxplot(promoter_ipsc_early_or, promoter_ipsc_late_or, promoter_cardio_early_or, promoter_cardio_late_or, promoter_ipsc_change_or, promoter_cardio_change_or, output_file, "promoter")
+
+
+
+########################
+# Enhancer
+########################
+
+
+
+enhancer_ipsc_file_early <- paste0(input_root, "mark_enhancer_cl_ipsc_cell_lines_hits_early_time_step_hits_num_", num_permutations, "_bound_",error_bound, "_enrich.txt" )
+enhancer_ipsc_file_late <- paste0(input_root, "mark_enhancer_cl_ipsc_cell_lines_hits_late_time_step_hits_num_", num_permutations, "_bound_",error_bound, "_enrich.txt" )
+enhancer_ipsc_file_change <- paste0(input_root, "mark_enhancer_cl_ipsc_cell_lines_hits_change_in_sign_hits_num_", num_permutations, "_bound_",error_bound, "_enrich.txt" )
+
+
+enhancer_cardio_file_early <- paste0(input_root, "mark_enhancer_cl_heart_cell_lines_hits_early_time_step_hits_num_", num_permutations, "_bound_",error_bound, "_enrich.txt" )
+enhancer_cardio_file_late <- paste0(input_root, "mark_enhancer_cl_heart_cell_lines_hits_late_time_step_hits_num_", num_permutations, "_bound_",error_bound, "_enrich.txt" )
+enhancer_cardio_file_change <- paste0(input_root, "mark_enhancer_cl_heart_cell_lines_hits_change_in_sign_hits_num_", num_permutations, "_bound_",error_bound, "_enrich.txt" )
 
 
 
 
 
 
+enhancer_ipsc_early_or <- load_in_odds_ratios(enhancer_ipsc_file_early, adding_constant)
+enhancer_ipsc_late_or <- load_in_odds_ratios(enhancer_ipsc_file_late, adding_constant)
+enhancer_ipsc_change_or <- load_in_odds_ratios(enhancer_ipsc_file_change, adding_constant)
+
+enhancer_cardio_early_or <- load_in_odds_ratios(enhancer_cardio_file_early, adding_constant)
+enhancer_cardio_late_or <- load_in_odds_ratios(enhancer_cardio_file_late, adding_constant)
+enhancer_cardio_change_or <- load_in_odds_ratios(enhancer_cardio_file_change, adding_constant)
 
 
-output_file <- paste0(output_root, hits_version, "_marker_type_promotor_odds_ratio_enrichment.png")
-#odds_ratio_boxplot(promotor_ipsc, promotor_cardio, promotor_all, output_file, "promotor", hits_version)
 
 
+output_file <- paste0(output_root, "enhancer_cell_line_specific_num_perm_", num_permutations,"_error_bound_", error_bound, "_odds_ratios.png")
 
-output_file <- paste0(output_root, hits_version, "_marker_type_enhancer_odds_ratio_enrichment.png")
-#odds_ratio_boxplot(enhancer_ipsc, enhancer_cardio, enhancer_all, output_file, "enhancer", hits_version)
+odds_ratio_cell_line_specific_boxplot(enhancer_ipsc_early_or, enhancer_ipsc_late_or, enhancer_cardio_early_or, enhancer_cardio_late_or, enhancer_ipsc_change_or, enhancer_cardio_change_or, output_file, "enhancer")
+

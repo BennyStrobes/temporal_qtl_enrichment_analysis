@@ -137,12 +137,6 @@ sbatch chrom_hmm_enrichment_analysis.sh $parameter_string_05 $num_permutations $
 fi
 
 
-if false; then
-
-Rscript global_odds_ratio_plotter.R $parameter_string $num_permutations $chrom_hmm_enrichment_directory $visualization_directory
-
-fi
-
 #########################################################
 # PART 3: Cell Line overlap analysis
 # Compute how often a given pair of cell lines overlap in their genotype in hits compared to background
